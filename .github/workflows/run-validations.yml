@@ -13,8 +13,7 @@ defaults:
 jobs:
   lint-project:
     name: "Lint project"
-    runs-on:
-      group: organization/Default
+    runs-on: ubuntu-latest
     strategy:
       max-parallel: 1
       fail-fast: true
@@ -23,13 +22,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Checkout actions
-        uses: actions/checkout@v4
-        with:
-          repository: pubnub/client-engineering-deployment-tools
-          ref: v1
-          token: ${{ secrets.GH_TOKEN }}
-          path: .github/.release/actions
       - name: Determine composer cache directory
         id: composer-cache-dir
         run: echo "dir=$(composer config cache-dir)" >> $GITHUB_OUTPUT
@@ -56,37 +48,10 @@ jobs:
         run: vendor/bin/phpstan analyze --memory-limit 256M
       - name: Run phpcs on changed files
         run: git diff --name-only --diff-filter=d origin/master HEAD | grep -E '\.php$' | xargs vendor/bin/phpcs --standard=PSR12
-      - name: Cancel workflow runs for commit on error
-        if: failure()
-        uses: ./.github/.release/actions/actions/utils/fast-jobs-failure
-
-
-  pubnub-yml:
-    name: "Validate .pubnub.yml"
-    runs-on:
-      group: organization/Default
-    steps:
-      - name: Checkout project
-        uses: actions/checkout@v4
-      - name: Checkout validator action
-        uses: actions/checkout@v4
-        with:
-          repository: pubnub/client-engineering-deployment-tools
-          ref: v1
-          token: ${{ secrets.GH_TOKEN }}
-          path: .github/.release/actions
-      - name: "Run '.pubnub.yml' file validation"
-        uses: ./.github/.release/actions/actions/validators/pubnub-yml
-        with:
-          token: ${{ secrets.GH_TOKEN }}
-      - name: Cancel workflow runs for commit on error
-        if: failure()
-        uses: ./.github/.release/actions/actions/utils/fast-jobs-failure
   all-validations:
     name: Validations
-    needs: [pubnub-yml, lint-project]
-    runs-on:
-      group: organization/Default
+    needs: [lint-project]
+    runs-on: ubuntu-latest
     steps:
       - name: Validations summary
         run: echo -e "\033[38;2;95;215;0m\033[1mAll validations passed"
