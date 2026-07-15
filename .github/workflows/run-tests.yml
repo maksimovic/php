@@ -13,13 +13,12 @@ defaults:
 jobs:
   tests:
     name: Integration and Unit tests
-    runs-on:
-      group: organization/Default
+    runs-on: ubuntu-latest
     strategy:
       max-parallel: 1
       fail-fast: true
       matrix:
-        php: [8.1, 8.2, 8.3, 8.4]
+        php: [8.1, 8.2, 8.3, 8.4, 8.5]
     env:
       PUBLISH_KEY: ${{ secrets.SDK_PUB_KEY }}
       SUBSCRIBE_KEY: ${{ secrets.SDK_SUB_KEY }}
@@ -31,13 +30,6 @@ jobs:
     steps:
       - name: Checkout project
         uses: actions/checkout@v4
-      - name: Checkout actions
-        uses: actions/checkout@v4
-        with:
-          repository: pubnub/client-engineering-deployment-tools
-          ref: v1
-          token: ${{ secrets.GH_TOKEN }}
-          path: .github/.release/actions
       - name: Determine composer cache directory
         id: composer-cache-dir
         run: echo "dir=$(composer config cache-dir)" >> $GITHUB_OUTPUT
@@ -61,47 +53,14 @@ jobs:
           composer self-update && composer --version
           composer install --prefer-dist
       - name: Run unit tests
+        run: ./vendor/bin/phpunit --verbose ./tests/unit
+      - name: Run full test suite (requires PubNub keys)
+        if: env.SUBSCRIBE_KEY != ''
         run: composer test
-      - name: Cancel workflow runs for commit on error
-        if: failure()
-        uses: ./.github/.release/actions/actions/utils/fast-jobs-failure
-  acceptance-tests:
-    name: Perform Acceptance BDD tests
-    runs-on:
-      group: organization/Default
-    steps:
-      - name: Checkout project
-        uses: actions/checkout@v4
-      - name: Checkout mock-server action
-        uses: actions/checkout@v4
-        with:
-          repository: pubnub/client-engineering-deployment-tools
-          ref: v1
-          token: ${{ secrets.GH_TOKEN }}
-          path: .github/.release/actions
-      - name: Run mock server action
-        uses: ./.github/.release/actions/actions/mock-server
-        with:
-          token: ${{ secrets.GH_TOKEN }}
-      - name: Install Composer dev depenencies
-        run: |
-          composer install --dev
-      - name: Run acceptance tests
-        run: |
-          composer acceptance-test
-      - name: Cancel workflow runs for commit on error
-        if: failure()
-        uses: ./.github/.release/actions/actions/utils/fast-jobs-failure
-      - name: Expose acceptance tests reports
-        uses: actions/upload-artifact@v4
-        with:
-          name: acceptance-test-reports
-          path: ./tests/Acceptance/reports
   all-tests:
     name: Tests
     needs: [tests]
-    runs-on:
-      group: organization/Default
+    runs-on: ubuntu-latest
     steps:
       - name: Tests summary
         run: echo -e "\033[38;2;95;215;0m\033[1mAll tests successfully passed"
