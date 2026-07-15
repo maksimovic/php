@@ -53,6 +53,9 @@ jobs:
           composer self-update && composer --version
           composer install --prefer-dist
       - name: Run unit tests
+        run: ./vendor/bin/phpunit --verbose ./tests/unit
+      - name: Run full test suite (requires PubNub keys)
+        if: env.SUBSCRIBE_KEY != ''
         run: composer test
   all-tests:
     name: Tests
